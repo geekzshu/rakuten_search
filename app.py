@@ -119,13 +119,13 @@ if tool == "キーワード検索 (競合分析)":
         
         col1, col2 = st.columns(2)
         with col1:
-            max_items = st.number_input("取得する商品数", min_value=1, max_value=10, value=10)
+            max_items = st.number_input("取得する商品数", min_value=1, max_value=5, value=1)
         with col2:
             sort_options = {
-                "-reviewAverage": "レビュー評価の高い順",
-                "+reviewAverage": "レビュー評価の低い順",
                 "-reviewCount": "レビュー件数の多い順",
                 "+reviewCount": "レビュー件数の少ない順",
+                "-reviewAverage": "レビュー評価の高い順",
+                "+reviewAverage": "レビュー評価の低い順",
                 "-itemPrice": "価格の高い順",
                 "+itemPrice": "価格の低い順",
                 "standard": "標準",
