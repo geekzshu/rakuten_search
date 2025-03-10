@@ -75,7 +75,8 @@ with st.sidebar:
     
     # APIキー設定
     st.subheader("楽天APIキー設定")
-    api_key = st.text_input("楽天アプリケーションID", value=st.session_state.api_key)
+    #api_key = st.text_input("楽天アプリケーションID", value=st.session_state.api_key)
+    api_key = st.text_input("楽天アプリケーションID", value="1000000000000000")
     if api_key:
         st.session_state.api_key = api_key
     
