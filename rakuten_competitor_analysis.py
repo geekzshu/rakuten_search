@@ -11,13 +11,14 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import re
 
+
 class RakutenCompetitorAnalysis:
     def __init__(self, application_id):
         """
         楽天市場の競合調査ツールの初期化
         
         Args:
-            application_id (str): 1084639123280921528
+            application_id (str): RAKUTEN_API_KEY
         """
         self.application_id = application_id
         self.base_url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
@@ -36,8 +37,15 @@ class RakutenCompetitorAnalysis:
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            # ChromeDriverManagerを使用して適切なバージョンを自動的に取得
+            service = Service(ChromeDriverManager().install())
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            print(f"ChromeDriverManagerでのインストールに失敗: {e}")
+            # 失敗した場合はローカルのChromeDriverを使用
+            service = Service("./chromedriver_m")
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
         
     def search_similar_items(self, keyword, hits=30, page=1, sort="-reviewAverage"):
         """

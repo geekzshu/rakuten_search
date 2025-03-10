@@ -2,9 +2,13 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+from dotenv import load_dotenv
 from rakuten_competitor_analysis import RakutenCompetitorAnalysis
 from rakuten_item_details import RakutenItemDetails
 from rakuten_js_item_details import RakutenJSItemDetails
+
+# .envファイルの内容を読み込見込む
+load_dotenv()
 
 # ページ設定
 st.set_page_config(
@@ -62,9 +66,9 @@ st.markdown("""
 
 # セッション状態の初期化
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = "1084639123280921528"  # デフォルトのAPIキー
+    st.session_state.api_key = os.getenv("RAKUTEN_API_KEY") # デフォルトのAPIキー
 
-# サイドバー
+# サイドバーß
 with st.sidebar:
     st.title("楽天商品情報取得ツール")
     st.markdown("---")

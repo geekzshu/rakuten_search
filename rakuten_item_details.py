@@ -37,7 +37,8 @@ class RakutenItemDetails:
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         
-        service = Service(ChromeDriverManager().install())
+        # ローカルのChromeDriverを使用
+        service = Service("./chromedriver_m")  # Windowsの場合は "./chromedriver.exe"
         self.driver = webdriver.Chrome(service=service, options=chrome_options)
         
     def get_item_by_id(self, item_id):
