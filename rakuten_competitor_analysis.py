@@ -282,6 +282,88 @@ class RakutenCompetitorAnalysis:
             
         return additional_info
     
+    def get_reviews_from_page(self, item_url):
+        """
+        商品ページからレビュー情報を取得
+        
+        Args:
+            item_url (str): 商品ページのURL
+            
+        Returns:
+            dict: レビュー情報（件数、レビューテキスト一覧）
+        """
+        if self.driver is None:
+            self.initialize_selenium()
+        
+        try:
+            # 商品ページにアクセス
+            self.driver.get(item_url)
+            time.sleep(2)  # ページ読み込み待機
+            
+            # レビューボタンを探す
+            review_buttons = self.driver.find_elements(By.CSS_SELECTOR, "a.button--3SNaj")
+            review_button = None
+            review_count = 0
+            
+            # レビューボタンを特定
+            for button in review_buttons:
+                if "レビュー" in button.text:
+                    text = button.text.strip()
+                    # レビュー件数を抽出
+                    match = re.search(r'(\d+)', text)
+                    if match:
+                        review_count = int(match.group(1))
+                    review_button = button
+                    break
+            
+            if not review_button or review_count == 0:
+                return {"review_count": 0, "reviews": []}
+            
+            # レビューページに移動
+            review_button.click()
+            time.sleep(3)  # ページ読み込み待機
+            
+            # レビュー一覧を取得
+            reviews = []
+            review_elements = self.driver.find_elements(By.CSS_SELECTOR, "ul.itemReviewList > li")
+            
+            for review_element in review_elements:
+                try:
+                    # レビュー評価
+                    rating_element = review_element.find_element(By.CSS_SELECTOR, "span.revRating")
+                    rating = float(rating_element.text.replace("点", "").strip()) if rating_element else 0
+                    
+                    # レビュータイトル
+                    title_element = review_element.find_element(By.CSS_SELECTOR, "div.revTitleBox span")
+                    title = title_element.text.strip() if title_element else ""
+                    
+                    # レビュー本文
+                    comment_element = review_element.find_element(By.CSS_SELECTOR, "dd.revComment")
+                    comment = comment_element.text.strip() if comment_element else ""
+                    
+                    # レビュー日付
+                    date_element = review_element.find_element(By.CSS_SELECTOR, "p.revDate")
+                    date = date_element.text.strip() if date_element else ""
+                    
+                    reviews.append({
+                        "rating": rating,
+                        "title": title,
+                        "comment": comment,
+                        "date": date
+                    })
+                except Exception as e:
+                    print(f"レビュー要素の解析中にエラー: {e}")
+                    continue
+            
+            return {
+                "review_count": review_count,
+                "reviews": reviews
+            }
+        
+        except Exception as e:
+            print(f"レビュー取得中にエラー: {e}")
+            return {"review_count": 0, "reviews": []}
+    
     def analyze_competitors(self, keyword, max_items=10, sort_order="-reviewAverage", progress_callback=None, headless=True):
         """
         競合分析を実行し、結果をデータフレームとして返す
@@ -477,6 +559,110 @@ class RakutenCompetitorAnalysis:
         if self.driver:
             self.driver.quit()
             self.driver = None
+
+    def search_and_analyze(self, keyword, max_items=10, sort="-reviewAverage"):
+        """
+        キーワードで検索して競合分析を行う
+        
+        Args:
+            keyword (str): 検索キーワード
+            max_items (int): 取得する商品数
+            sort (str): ソート順
+            
+        Returns:
+            pandas.DataFrame: 分析結果
+        """
+        # 初期化
+        all_items = []
+        page = 1
+        items_per_page = min(30, max_items)
+        
+        # 商品情報の取得
+        while len(all_items) < max_items:
+            print(f"ページ {page} の商品を取得中...")
+            result = self.search_similar_items(keyword, hits=items_per_page, page=page, sort=sort)
+            
+            if 'Items' not in result or not result['Items']:
+                break
+            
+            items = result['Items']
+            all_items.extend(items[:max_items - len(all_items)])
+            
+            if len(items) < items_per_page:
+                break
+            
+            page += 1
+        
+        # 結果の整形
+        formatted_items = []
+        
+        for i, item_data in enumerate(all_items):
+            if isinstance(item_data, dict) and 'Item' in item_data:
+                item = item_data['Item']
+            else:
+                item = item_data
+            
+            # 基本情報の抽出
+            item_info = {
+                'itemName': item.get('itemName', ''),
+                'itemPrice': item.get('itemPrice', 0),
+                'itemUrl': item.get('itemUrl', ''),
+                'shopName': item.get('shopName', ''),
+                'shopUrl': item.get('shopUrl', ''),
+                'itemCode': item.get('itemCode', ''),
+                'imageUrl': item.get('mediumImageUrls', [{}])[0].get('imageUrl', '') if item.get('mediumImageUrls') else '',
+                'reviewAverage': item.get('reviewAverage', 0),
+                'reviewCount': item.get('reviewCount', 0),
+                'pointRate': item.get('pointRate', 0),
+                'pointRateStartTime': item.get('pointRateStartTime', ''),
+                'pointRateEndTime': item.get('pointRateEndTime', ''),
+                'shopAffiliateUrl': item.get('shopAffiliateUrl', ''),
+                'affiliateRate': item.get('affiliateRate', 0),
+                'shipOverseasFlag': item.get('shipOverseasFlag', 0),
+                'asurakuFlag': item.get('asurakuFlag', 0),
+                'taxFlag': item.get('taxFlag', 0),
+                'postageFlag': item.get('postageFlag', 0),
+                'creditCardFlag': item.get('creditCardFlag', 0),
+                'shopOfTheYearFlag': item.get('shopOfTheYearFlag', 0),
+                'giftFlag': item.get('giftFlag', 0),
+                'position': i + 1,
+                'keyword': keyword
+            }
+            
+            # 追加のレビュー情報を取得
+            print(f"商品 {i+1}/{len(all_items)} のレビュー情報を取得中...")
+            review_info = self.get_reviews_from_page(item_info['itemUrl'])
+            
+            # レビュー情報を追加
+            item_info['detailed_review_count'] = review_info['review_count']
+            item_info['reviews'] = review_info['reviews']
+            
+            formatted_items.append(item_info)
+        
+        # DataFrameに変換
+        df = pd.DataFrame(formatted_items)
+        
+        # レビューテキストを別の列に展開
+        if not df.empty and 'reviews' in df.columns:
+            # レビューの最初の5件を別々の列に展開
+            for i in range(min(5, max(len(reviews) for reviews in df['reviews'] if isinstance(reviews, list)))):
+                df[f'review_{i+1}_rating'] = df['reviews'].apply(
+                    lambda reviews: reviews[i]['rating'] if isinstance(reviews, list) and i < len(reviews) else None
+                )
+                df[f'review_{i+1}_title'] = df['reviews'].apply(
+                    lambda reviews: reviews[i]['title'] if isinstance(reviews, list) and i < len(reviews) else None
+                )
+                df[f'review_{i+1}_comment'] = df['reviews'].apply(
+                    lambda reviews: reviews[i]['comment'] if isinstance(reviews, list) and i < len(reviews) else None
+                )
+                df[f'review_{i+1}_date'] = df['reviews'].apply(
+                    lambda reviews: reviews[i]['date'] if isinstance(reviews, list) and i < len(reviews) else None
+                )
+            
+            # 元のreviewsリストは削除（データフレームを軽くするため）
+            df = df.drop(columns=['reviews'])
+        
+        return df
 
 # 使用例
 if __name__ == "__main__":
