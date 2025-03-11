@@ -734,7 +734,7 @@ class RakutenCompetitorAnalysis:
                 if isinstance(reviews, list):
                     max_reviews = max(max_reviews, len(reviews))
             
-            for i in range(min(5, max_reviews)):
+            for i in range(min(20, max_reviews)):
                 df[f'review_{i+1}_rating'] = df['reviews'].apply(
                     lambda reviews: reviews[i]['rating'] if isinstance(reviews, list) and i < len(reviews) else None
                 )
