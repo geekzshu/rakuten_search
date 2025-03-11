@@ -61,6 +61,11 @@ class RakutenCompetitorAnalysis:
         if is_streamlit_cloud:
             # Streamlit Cloud環境ではChromiumのパスを明示的に指定
             chrome_options.binary_location = "/usr/bin/chromium-browser"
+
+            # 環境変数も設定
+            os.environ['CHROME_PATH'] = '/usr/bin/chromium-browser'
+            os.environ['CHROMEDRIVER_PATH'] = '/usr/bin/chromedriver'
+   
         
         try:
             if is_streamlit_cloud:
