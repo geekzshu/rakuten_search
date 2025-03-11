@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import traceback
+import os
 
 class RakutenJSItemDetails:
     def __init__(self, application_id):
@@ -37,8 +38,46 @@ class RakutenJSItemDetails:
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            # ChromeDriverManagerを使用して適切なバージョンを自動的に取得
+            from webdriver_manager.chrome import ChromeDriverManager
+            from selenium.webdriver.chrome.service import Service
+            
+            # 最新のChromeDriverを取得（バージョン指定なし）
+            service = Service(ChromeDriverManager().install())
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            print(f"ChromeDriverManagerでのインストールに失敗: {e}")
+            try:
+                # 代替方法: 直接バイナリパスを指定
+                from selenium.webdriver.chrome.service import Service
+                
+                # 各OSに応じたパスを試す
+                driver_paths = [
+                    "./chromedriver",  # カレントディレクトリ
+                    "./chromedriver_m",  # Macの場合
+                    "./chromedriver.exe",  # Windowsの場合
+                    "/usr/local/bin/chromedriver",  # Linux/Macの一般的な場所
+                    "/usr/bin/chromedriver"  # Linux/Macの別の場所
+                ]
+                
+                for path in driver_paths:
+                    if os.path.exists(path):
+                        service = Service(path)
+                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                        print(f"ローカルのChromeDriverを使用: {path}")
+                        break
+                else:
+                    # どのパスも見つからない場合は、ChromeDriverを自動ダウンロード
+                    from webdriver_manager.chrome import ChromeDriverManager
+                    from webdriver_manager.core.utils import ChromeType
+                    
+                    # 最新の安定版を取得
+                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            except Exception as inner_e:
+                print(f"代替方法でのChromeDriver初期化に失敗: {inner_e}")
+                raise Exception(f"ChromeDriverの初期化に失敗しました。エラー: {e}, {inner_e}")
     
     def extract_js_data_from_url(self, url):
         """
