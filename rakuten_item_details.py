@@ -516,8 +516,30 @@ class RakutenItemDetails:
             result = response.json()
             
             if 'Items' in result and len(result['Items']) > 0:
-                return result['Items'][0]
+                # 商品情報を取得
+                item_data = result['Items'][0]
+                if isinstance(item_data, dict) and 'Item' in item_data:
+                    return item_data['Item']
+                return item_data
             else:
+                # 商品が見つからない場合は検索APIを使用
+                search_params = {
+                    "applicationId": self.application_id,
+                    "keyword": item_code,
+                    "shopCode": shop_code,
+                    "hits": 1,
+                    "formatVersion": 2
+                }
+                
+                search_response = requests.get(self.base_url, params=search_params)
+                search_result = search_response.json()
+                
+                if 'Items' in search_result and len(search_result['Items']) > 0:
+                    item_data = search_result['Items'][0]
+                    if isinstance(item_data, dict) and 'Item' in item_data:
+                        return item_data['Item']
+                    return item_data
+                
                 print(f"商品コード '{item_code}' に一致する商品が見つかりませんでした")
                 return None
         except Exception as e:

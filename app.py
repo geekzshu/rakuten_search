@@ -367,12 +367,19 @@ if page == "競合分析":
         st.markdown("<h2 class='sub-header'>URL検索 (商品詳細)</h2>", unsafe_allow_html=True)
         st.markdown("<p class='info-text'>楽天市場の商品URLを入力して詳細情報を取得します。</p>", unsafe_allow_html=True)
         
+        # Streamlit Cloud環境かどうかを確認
+        is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
+        
         # 入力フォーム
         with st.form("url_search_form"):
             item_url = st.text_input("商品URL", placeholder="https://item.rakuten.co.jp/...")
             
-            # Seleniumの使用有無を選択
-            use_selenium = st.checkbox("Seleniumを使用する（詳細情報取得）", value=True, help="オフにすると基本情報のみ取得します")
+            # Seleniumの使用有無を選択（Streamlit Cloudでは無効化）
+            if is_streamlit_cloud:
+                st.warning("Streamlit Cloud環境ではSeleniumが使用できないため、基本情報のみ取得します。")
+                use_selenium = False
+            else:
+                use_selenium = st.checkbox("Seleniumを使用する（詳細情報取得）", value=True, help="オフにすると基本情報のみ取得します")
             
             submit_button = st.form_submit_button("検索開始")
         
@@ -392,38 +399,20 @@ if page == "競合分析":
                         log_area = log_container.empty()
                     
                     try:
-                        # 商品情報取得ツールの初期化
-                        if use_selenium:
-                            try:
-                                # Seleniumを使用した詳細情報取得
-                                item_details = RakutenJSItemDetails(st.session_state.api_key)
-                                
-                                # 進捗状況の更新
-                                progress_bar.progress(0.2)
-                                status_text.text("Seleniumを初期化中...")
-                                
-                                # Seleniumの初期化
-                                item_details.initialize_selenium(headless=headless)
-                                
-                                # 進捗状況の更新
-                                progress_bar.progress(0.4)
-                                status_text.text("商品ページにアクセス中...")
-                                
-                                # 商品情報の取得
-                                item_data = item_details.extract_js_data_from_url(item_url)
-                                
-                                # 進捗状況の更新
-                                progress_bar.progress(0.8)
-                                status_text.text("商品情報を処理中...")
-                                
-                                # リソースの解放
-                                item_details.close()
-                            except Exception as selenium_error:
-                                st.warning(f"Seleniumでの取得に失敗しました。基本情報のみ取得します。エラー: {selenium_error}")
-                                # 基本情報のみ取得する方法にフォールバック
-                                use_selenium = False
+                        # 商品コードを抽出
+                        import re
+                        item_code_match = re.search(r'/([^/]+)/([^/]+)$', item_url)
                         
-                        if not use_selenium:
+                        if not item_code_match:
+                            st.error("URLから商品コードを抽出できませんでした。")
+                            progress_bar.progress(1.0)
+                            status_text.text("処理が完了しました")
+                        else:
+                            # 商品コードが抽出できた場合の処理
+                            shop_code = item_code_match.group(1)
+                            item_code = item_code_match.group(2)
+                            full_item_code = f"{shop_code}:{item_code}"
+                            
                             # APIを使用した基本情報取得
                             item_details = RakutenItemDetails(st.session_state.api_key)
                             
@@ -431,50 +420,39 @@ if page == "競合分析":
                             progress_bar.progress(0.3)
                             status_text.text("商品情報をAPIから取得中...")
                             
-                            # 商品コードを抽出
-                            import re
-                            item_code_match = re.search(r'/([^/]+)/([^/]+)$', item_url)
-                            if item_code_match:
-                                shop_code = item_code_match.group(1)
-                                item_code = item_code_match.group(2)
-                                full_item_code = f"{shop_code}:{item_code}"
-                                
-                                # 商品情報の取得
-                                item_data = item_details.get_item_by_code(full_item_code)
-                            else:
-                                st.error("URLから商品コードを抽出できませんでした。")
-                                item_data = None
+                            # 商品情報の取得
+                            item_data = item_details.get_item_by_code(full_item_code)
                             
                             # 進捗状況の更新
                             progress_bar.progress(0.8)
                             status_text.text("商品情報を処理中...")
-
-                        # 結果の表示
-                        if item_data:
-                            # ファイル名の設定
-                            timestamp = time.strftime("%Y%m%d_%H%M%S")
-                            filename = f"{output_dir}/rakuten_url_details_{timestamp}.csv"
                             
-                            # 結果の保存
-                            pd.DataFrame([item_data]).to_csv(filename, index=False, encoding='utf-8-sig')
-                            
-                            # 成功メッセージ
-                            st.markdown(f"<div class='success-box'>商品情報を取得しました。</div>", unsafe_allow_html=True)
-                            
-                            # 結果のプレビュー
-                            st.subheader("取得した商品情報")
-                            st.dataframe(pd.DataFrame([item_data]))
-                            
-                            # ダウンロードボタン
-                            with open(filename, "rb") as file:
-                                st.download_button(
-                                    label="CSVファイルをダウンロード",
-                                    data=file,
-                                    file_name=os.path.basename(filename),
-                                    mime="text/csv"
-                                )
-                        else:
-                            st.markdown("<div class='warning-box'>商品情報が取得できませんでした。</div>", unsafe_allow_html=True)
+                            # 結果の表示
+                            if item_data:
+                                # ファイル名の設定
+                                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                                filename = f"{output_dir}/rakuten_url_details_{timestamp}.csv"
+                                
+                                # 結果の保存
+                                pd.DataFrame([item_data]).to_csv(filename, index=False, encoding='utf-8-sig')
+                                
+                                # 成功メッセージ
+                                st.markdown(f"<div class='success-box'>商品情報を取得しました。</div>", unsafe_allow_html=True)
+                                
+                                # 結果のプレビュー
+                                st.subheader("取得した商品情報")
+                                st.dataframe(pd.DataFrame([item_data]))
+                                
+                                # ダウンロードボタン
+                                with open(filename, "rb") as f:
+                                    st.download_button(
+                                        label="CSVファイルをダウンロード",
+                                        data=f,
+                                        file_name=f"rakuten_item_{shop_code}_{item_code}.csv",
+                                        mime="text/csv"
+                                    )
+                            else:
+                                st.markdown("<div class='warning-box'>商品情報が取得できませんでした。</div>", unsafe_allow_html=True)
                     
                     except Exception as e:
                         st.markdown(f"<div class='error-box'>エラーが発生しました: {str(e)}</div>", unsafe_allow_html=True)
