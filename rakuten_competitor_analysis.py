@@ -745,6 +745,7 @@ class RakutenCompetitorAnalysis:
             self.driver.quit()
             self.driver = None
 
+
     def save_reviews_to_csv(self, df, keyword, output_dir="output"):
         """
         レビュー情報を専用のCSVファイルに保存
