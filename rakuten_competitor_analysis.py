@@ -53,7 +53,6 @@ class RakutenCompetitorAnalysis:
             chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
         
         # Streamlit Cloud環境用の設定
         is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
@@ -61,75 +60,37 @@ class RakutenCompetitorAnalysis:
         if is_streamlit_cloud:
             # Streamlit Cloud環境ではChromiumのパスを明示的に指定
             chrome_options.binary_location = "/usr/bin/chromium-browser"
-
+            
             # 環境変数も設定
             os.environ['CHROME_PATH'] = '/usr/bin/chromium-browser'
             os.environ['CHROMEDRIVER_PATH'] = '/usr/bin/chromedriver'
-   
         
         try:
-            if is_streamlit_cloud:
-                # Streamlit Cloud環境ではChromiumを使用
-                #from webdriver_manager.chrome import ChromeDriverManager
-                #from webdriver_manager.core.utils import ChromeType
-                #from selenium.webdriver.chrome.service import Service
-                
-                # Chromiumドライバーを使用
-                #service = Service("/usr/bin/chromedriver")
-                #self.driver = webdriver.Chrome(service=service, options=chrome_options)
-
-                # 各ファイルのinitialize_seleniumメソッド内で
-                from webdriver_manager.chrome import ChromeDriverManager
-                from webdriver_manager.core.utils import ChromeType
-                from selenium.webdriver.chrome.service import Service
-
-                # Chromiumのバージョンを指定
-                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120").install())
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
-
-                print("Streamlit Cloud環境でChromiumドライバーを使用")
-            else:
-                # 通常環境
-                from webdriver_manager.chrome import ChromeDriverManager
-                from selenium.webdriver.chrome.service import Service
-                
+            # 最新のwebdriver-managerでは、versionパラメータが削除されている
+            from webdriver_manager.chrome import ChromeDriverManager
+            
+            try:
+                # ChromeTypeを使用する方法を試す
+                try:
+                    from webdriver_manager.core.utils import ChromeType
+                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                except ImportError:
+                    try:
+                        from webdriver_manager.core.os_manager import ChromeType
+                        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                    except ImportError:
+                        # ChromeTypeが見つからない場合は、chrome_typeなしで実行
+                        service = Service(ChromeDriverManager().install())
+            except Exception as e:
+                print(f"ChromeTypeでのインストールに失敗: {e}")
+                # バージョン指定なしで最新を取得
                 service = Service(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            
         except Exception as e:
             print(f"ChromeDriverManagerでのインストールに失敗: {e}")
-            try:
-                # 代替方法: 直接バイナリパスを指定
-                from selenium.webdriver.chrome.service import Service
-                
-                # Streamlit Cloud環境では特定のパスを試す
-                if is_streamlit_cloud:
-                    driver_paths = [
-                        "/usr/bin/chromedriver",
-                        "/usr/local/bin/chromedriver",
-                        "/home/appuser/.wdm/drivers/chromedriver/linux64/latest/chromedriver"
-                    ]
-                else:
-                    # 各OSに応じたパスを試す
-                    driver_paths = [
-                        "./chromedriver",  # カレントディレクトリ
-                        "./chromedriver_li",  # Macの場合
-                        "./chromedriver_m",  # linuxの場合
-                        "./chromedriver.exe",  # Windowsの場合
-                        "/usr/local/bin/chromedriver",  # Linux/Macの一般的な場所
-                        "/usr/bin/chromedriver"  # Linux/Macの別の場所
-                    ]
-                
-                for path in driver_paths:
-                    if os.path.exists(path):
-                        service = Service(path)
-                        self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                        print(f"ローカルのChromeDriverを使用: {path}")
-                        break
-                else:
-                    raise Exception("適切なChromeDriverが見つかりませんでした")
-            except Exception as inner_e:
-                print(f"代替方法でのChromeDriver初期化に失敗: {inner_e}")
-                raise Exception(f"ChromeDriverの初期化に失敗しました。エラー: {e}, {inner_e}")
+            # 代替方法を試す...
         
     def search_similar_items(self, keyword, hits=30, page=1, sort="-reviewAverage"):
         """

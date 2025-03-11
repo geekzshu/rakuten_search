@@ -51,21 +51,26 @@ class RakutenItemDetails:
    
 
         try:
-            # ChromeDriverManagerを使用して適切なバージョンを自動的に取得
-            #from webdriver_manager.chrome import ChromeDriverManager
-            #from selenium.webdriver.chrome.service import Service
-            
-            # 最新のChromeDriverを取得（バージョン指定なし）
-            #service = Service(ChromeDriverManager().install())
-            #self.driver = webdriver.Chrome(service=service, options=chrome_options)
-
-            # 各ファイルのinitialize_seleniumメソッド内で
+            # 最新のwebdriver-managerでは、versionパラメータが削除されている
             from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.utils import ChromeType
-            from selenium.webdriver.chrome.service import Service
-
-            # Chromiumのバージョンを指定
-            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120").install())
+            
+            try:
+                # ChromeTypeを使用する方法を試す
+                try:
+                    from webdriver_manager.core.utils import ChromeType
+                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                except ImportError:
+                    try:
+                        from webdriver_manager.core.os_manager import ChromeType
+                        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                    except ImportError:
+                        # ChromeTypeが見つからない場合は、chrome_typeなしで実行
+                        service = Service(ChromeDriverManager().install())
+            except Exception as e:
+                print(f"ChromeTypeでのインストールに失敗: {e}")
+                # バージョン指定なしで最新を取得
+                service = Service(ChromeDriverManager().install())
+            
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
         except Exception as e:
@@ -76,12 +81,12 @@ class RakutenItemDetails:
                 
                 # 各OSに応じたパスを試す
                 driver_paths = [
-                    "./chromedriver",  # カレントディレクトリ
-                    "./chromedriver_li",  # Macの場合
-                    "./chromedriver_m",  # linuxの場合
-                    "./chromedriver.exe",  # Windowsの場合
+                    "/usr/bin/chromedriver",  # Linux/Macの別の場所
                     "/usr/local/bin/chromedriver",  # Linux/Macの一般的な場所
-                    "/usr/bin/chromedriver"  # Linux/Macの別の場所
+                    "./chromedriver_li",  # linuxの場合
+                    "./chromedriver_m",  # macの場合
+                    "./chromedriver.exe",  # Windowsの場合
+                    "./chromedriver"  # カレントディレクトリ
                 ]
                 
                 for path in driver_paths:
@@ -93,10 +98,9 @@ class RakutenItemDetails:
                 else:
                     # どのパスも見つからない場合は、ChromeDriverを自動ダウンロード
                     from webdriver_manager.chrome import ChromeDriverManager
-                    from webdriver_manager.core.utils import ChromeType
                     
-                    # 最新の安定版を取得
-                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                    # バージョン指定なしで最新を取得
+                    service = Service(ChromeDriverManager().install())
                     self.driver = webdriver.Chrome(service=service, options=chrome_options)
             except Exception as inner_e:
                 print(f"代替方法でのChromeDriver初期化に失敗: {inner_e}")
