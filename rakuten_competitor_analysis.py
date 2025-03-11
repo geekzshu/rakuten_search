@@ -79,7 +79,7 @@ class RakutenCompetitorAnalysis:
                 from selenium.webdriver.chrome.service import Service
 
                 # Chromiumのバージョンを指定
-                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120.0.6099").install())
+                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="114.0.5735").install())
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
                 print("Streamlit Cloud環境でChromiumドライバーを使用")
