@@ -65,7 +65,7 @@ class RakutenItemDetails:
             from selenium.webdriver.chrome.service import Service
 
             # Chromiumのバージョンを指定
-            #service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM").install())
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120").install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
 
         except Exception as e:
