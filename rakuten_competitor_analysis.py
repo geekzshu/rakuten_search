@@ -58,6 +58,10 @@ class RakutenCompetitorAnalysis:
         # Streamlit Cloud環境用の設定
         is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
         
+        if is_streamlit_cloud:
+            # Streamlit Cloud環境ではChromiumのパスを明示的に指定
+            chrome_options.binary_location = "/usr/bin/chromium-browser"
+        
         try:
             if is_streamlit_cloud:
                 # Streamlit Cloud環境ではChromiumを使用
@@ -66,7 +70,7 @@ class RakutenCompetitorAnalysis:
                 from selenium.webdriver.chrome.service import Service
                 
                 # Chromiumドライバーを使用
-                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+                service = Service("/usr/bin/chromedriver")
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
                 print("Streamlit Cloud環境でChromiumドライバーを使用")
             else:
@@ -106,12 +110,7 @@ class RakutenCompetitorAnalysis:
                         print(f"ローカルのChromeDriverを使用: {path}")
                         break
                 else:
-                    # どのパスも見つからない場合は、最後の手段としてChromiumを試す
-                    from webdriver_manager.chrome import ChromeDriverManager
-                    from webdriver_manager.core.utils import ChromeType
-                    
-                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                    raise Exception("適切なChromeDriverが見つかりませんでした")
             except Exception as inner_e:
                 print(f"代替方法でのChromeDriver初期化に失敗: {inner_e}")
                 raise Exception(f"ChromeDriverの初期化に失敗しました。エラー: {e}, {inner_e}")

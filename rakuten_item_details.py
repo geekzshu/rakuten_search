@@ -485,6 +485,45 @@ class RakutenItemDetails:
         response = requests.get(self.base_url, params=params)
         return response.json()
 
+    def get_item_by_code(self, item_code):
+        """
+        商品コードに基づいて商品情報を取得
+        
+        Args:
+            item_code (str): 楽天商品コード（ショップコード:商品コード形式）
+            
+        Returns:
+            dict: 商品情報
+        """
+        # 商品コードを分解
+        parts = item_code.split(':')
+        if len(parts) != 2:
+            print(f"無効な商品コード形式です: {item_code}")
+            return None
+        
+        shop_code, item_code = parts
+        
+        # 商品APIを呼び出す
+        params = {
+            "applicationId": self.application_id,
+            "shopCode": shop_code,
+            "itemCode": item_code,
+            "formatVersion": 2
+        }
+        
+        try:
+            response = requests.get(self.item_url, params=params)
+            result = response.json()
+            
+            if 'Items' in result and len(result['Items']) > 0:
+                return result['Items'][0]
+            else:
+                print(f"商品コード '{item_code}' に一致する商品が見つかりませんでした")
+                return None
+        except Exception as e:
+            print(f"API呼び出し中にエラー: {e}")
+            return None
+
 # 使用例
 if __name__ == "__main__":
     # 楽天APIのアプリケーションIDを設定

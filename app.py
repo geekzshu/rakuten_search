@@ -365,27 +365,23 @@ if page == "競合分析":
 
     elif tool == "URL検索 (商品詳細)":
         st.markdown("<h2 class='sub-header'>URL検索 (商品詳細)</h2>", unsafe_allow_html=True)
-        st.markdown("<p class='info-text'>楽天商品ページのURLを入力して、商品の詳細情報を取得します。</p>", unsafe_allow_html=True)
+        st.markdown("<p class='info-text'>楽天市場の商品URLを入力して詳細情報を取得します。</p>", unsafe_allow_html=True)
         
         # 入力フォーム
         with st.form("url_search_form"):
-            urls_text = st.text_area(
-                "商品ページのURL（1行に1つ）", 
-                placeholder="例:\nhttps://item.rakuten.co.jp/shop/item1/\nhttps://item.rakuten.co.jp/shop/item2/",
-                height=150
-            )
+            item_url = st.text_input("商品URL", placeholder="https://item.rakuten.co.jp/...")
             
-            submit_button = st.form_submit_button("情報取得開始")
+            # Seleniumの使用有無を選択
+            use_selenium = st.checkbox("Seleniumを使用する（詳細情報取得）", value=True, help="オフにすると基本情報のみ取得します")
+            
+            submit_button = st.form_submit_button("検索開始")
         
         # 検索実行
         if submit_button:
-            # URLの処理
-            urls = [url.strip() for url in urls_text.split('\n') if url.strip() and url.strip().startswith('http')]
-            
-            if not urls:
-                st.markdown("<div class='error-box'>有効なURLを入力してください。</div>", unsafe_allow_html=True)
+            if not item_url:
+                st.markdown("<div class='error-box'>商品URLを入力してください。</div>", unsafe_allow_html=True)
             else:
-                with st.spinner(f"{len(urls)}件のURLから情報を取得中..."):
+                with st.spinner(f"商品情報を取得中..."):
                     # 進捗バー
                     progress_bar = st.progress(0)
                     status_text = st.empty()
@@ -394,56 +390,80 @@ if page == "競合分析":
                     if debug_mode:
                         log_container = st.expander("実行ログ", expanded=True)
                         log_area = log_container.empty()
-                        log_text = []
-                        
-                        def log_callback(message):
-                            log_text.append(message)
-                            log_area.text("\n".join(log_text))
-                    else:
-                        log_callback = None
                     
                     try:
                         # 商品情報取得ツールの初期化
-                        item_details = RakutenJSItemDetails(st.session_state.api_key)
+                        if use_selenium:
+                            try:
+                                # Seleniumを使用した詳細情報取得
+                                item_details = RakutenJSItemDetails(st.session_state.api_key)
+                                
+                                # 進捗状況の更新
+                                progress_bar.progress(0.2)
+                                status_text.text("Seleniumを初期化中...")
+                                
+                                # Seleniumの初期化
+                                item_details.initialize_selenium(headless=headless)
+                                
+                                # 進捗状況の更新
+                                progress_bar.progress(0.4)
+                                status_text.text("商品ページにアクセス中...")
+                                
+                                # 商品情報の取得
+                                item_data = item_details.extract_js_data_from_url(item_url)
+                                
+                                # 進捗状況の更新
+                                progress_bar.progress(0.8)
+                                status_text.text("商品情報を処理中...")
+                                
+                                # リソースの解放
+                                item_details.close()
+                            except Exception as selenium_error:
+                                st.warning(f"Seleniumでの取得に失敗しました。基本情報のみ取得します。エラー: {selenium_error}")
+                                # 基本情報のみ取得する方法にフォールバック
+                                use_selenium = False
                         
-                        # 進捗コールバック
-                        def progress_callback(current, total, message):
-                            progress = min(current / total, 1.0)
-                            progress_bar.progress(progress)
-                            status_text.text(f"進捗: {current}/{total} - {message}")
-                            if log_callback:
-                                log_callback(f"[{current}/{total}] {message}")
-                        
-                        # 商品情報の取得
-                        results = item_details.process_urls(
-                            urls,
-                            progress_callback=progress_callback,
-                            headless=headless
-                        )
-                        
+                        if not use_selenium:
+                            # APIを使用した基本情報取得
+                            item_details = RakutenItemDetails(st.session_state.api_key)
+                            
+                            # 進捗状況の更新
+                            progress_bar.progress(0.3)
+                            status_text.text("商品情報をAPIから取得中...")
+                            
+                            # 商品コードを抽出
+                            import re
+                            item_code_match = re.search(r'/([^/]+)/([^/]+)$', item_url)
+                            if item_code_match:
+                                shop_code = item_code_match.group(1)
+                                item_code = item_code_match.group(2)
+                                full_item_code = f"{shop_code}:{item_code}"
+                                
+                                # 商品情報の取得
+                                item_data = item_details.get_item_by_code(full_item_code)
+                            else:
+                                st.error("URLから商品コードを抽出できませんでした。")
+                                item_data = None
+                            
+                            # 進捗状況の更新
+                            progress_bar.progress(0.8)
+                            status_text.text("商品情報を処理中...")
+
                         # 結果の表示
-                        if not results.empty:
+                        if item_data:
                             # ファイル名の設定
                             timestamp = time.strftime("%Y%m%d_%H%M%S")
                             filename = f"{output_dir}/rakuten_url_details_{timestamp}.csv"
                             
                             # 結果の保存
-                            results.to_csv(filename, index=False, encoding='utf-8-sig')
+                            pd.DataFrame([item_data]).to_csv(filename, index=False, encoding='utf-8-sig')
                             
                             # 成功メッセージ
-                            st.markdown(f"<div class='success-box'>{len(results)}件の商品情報を取得しました。</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='success-box'>商品情報を取得しました。</div>", unsafe_allow_html=True)
                             
                             # 結果のプレビュー
-                            st.subheader("検索結果プレビュー")
-                            
-                            # 表示するカラムを選択
-                            display_columns = ['url', 'itemName', 'itemPrice', 'shopName']
-                            if 'reviewAverage' in results.columns:
-                                display_columns.append('reviewAverage')
-                            if 'reviewCount' in results.columns:
-                                display_columns.append('reviewCount')
-                            
-                            st.dataframe(results[display_columns])
+                            st.subheader("取得した商品情報")
+                            st.dataframe(pd.DataFrame([item_data]))
                             
                             # ダウンロードボタン
                             with open(filename, "rb") as file:
@@ -453,38 +473,6 @@ if page == "競合分析":
                                     file_name=os.path.basename(filename),
                                     mime="text/csv"
                                 )
-                            
-                            # 画像プレビュー
-                            if 'imageUrl_1' in results.columns:
-                                st.subheader("商品画像サンプル")
-                                image_cols = st.columns(4)
-                                for i, row in results.iterrows():
-                                    if i < 4 and 'imageUrl_1' in row and row['imageUrl_1']:
-                                        with image_cols[i % 4]:
-                                            st.image(row['imageUrl_1'], caption=row.get('itemName', '商品画像'), use_container_width=True)
-
-                            # レビューサンプル
-                            if any(col.startswith('review_1_') for col in results.columns):
-                                st.subheader("レビューサンプル")
-                                for i, row in results.iterrows():
-                                    if i < 3:  # 最初の3商品のみ表示
-                                        st.markdown(f"**{row['itemName']}**")
-                                        for j in range(1, 6):  # 最大5件のレビュー
-                                            review_comment_col = f'review_{j}_comment'
-                                            if review_comment_col in row and pd.notna(row[review_comment_col]) and row[review_comment_col]:
-                                                rating_col = f'review_{j}_rating'
-                                                title_col = f'review_{j}_title'
-                                                date_col = f'review_{j}_date'
-                                                
-                                                rating = row[rating_col] if rating_col in row and pd.notna(row[rating_col]) else "不明"
-                                                title = row[title_col] if title_col in row and pd.notna(row[title_col]) else "タイトルなし"
-                                                date = row[date_col] if date_col in row and pd.notna(row[date_col]) else ""
-                                                
-                                                st.markdown(f"⭐ {rating} - **{title}**")
-                                                st.markdown(f"_{row[review_comment_col]}_")
-                                                if date:
-                                                    st.markdown(f"({date})")
-                                                st.markdown("---")
                         else:
                             st.markdown("<div class='warning-box'>商品情報が取得できませんでした。</div>", unsafe_allow_html=True)
                     
