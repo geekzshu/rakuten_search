@@ -55,7 +55,7 @@ class RakutenJSItemDetails:
                 # 各OSに応じたパスを試す
                 driver_paths = [
                     "./chromedriver",  # カレントディレクトリ
-                    "./chromedriver_li",  # Macの場合
+                    "./chromedriver_m",  # Macの場合
                     "./chromedriver.exe",  # Windowsの場合
                     "/usr/local/bin/chromedriver",  # Linux/Macの一般的な場所
                     "/usr/bin/chromedriver"  # Linux/Macの別の場所
