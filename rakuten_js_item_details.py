@@ -40,11 +40,19 @@ class RakutenJSItemDetails:
         
         try:
             # ChromeDriverManagerを使用して適切なバージョンを自動的に取得
-            from webdriver_manager.chrome import ChromeDriverManager
-            from selenium.webdriver.chrome.service import Service
+            #from webdriver_manager.chrome import ChromeDriverManager
+            #from selenium.webdriver.chrome.service import Service
             
             # 最新のChromeDriverを取得（バージョン指定なし）
-            service = Service(ChromeDriverManager().install())
+            #service = Service(ChromeDriverManager().install())
+            #self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            # 各ファイルのinitialize_seleniumメソッド内で
+            from webdriver_manager.chrome import ChromeDriverManager
+            from webdriver_manager.core.utils import ChromeType
+            from selenium.webdriver.chrome.service import Service
+
+            # Chromiumのバージョンを指定
+            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120.0.6099").install())
             self.driver = webdriver.Chrome(service=service, options=chrome_options)
         except Exception as e:
             print(f"ChromeDriverManagerでのインストールに失敗: {e}")

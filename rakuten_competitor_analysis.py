@@ -65,13 +65,23 @@ class RakutenCompetitorAnalysis:
         try:
             if is_streamlit_cloud:
                 # Streamlit Cloud環境ではChromiumを使用
+                #from webdriver_manager.chrome import ChromeDriverManager
+                #from webdriver_manager.core.utils import ChromeType
+                #from selenium.webdriver.chrome.service import Service
+                
+                # Chromiumドライバーを使用
+                #service = Service("/usr/bin/chromedriver")
+                #self.driver = webdriver.Chrome(service=service, options=chrome_options)
+
+                # 各ファイルのinitialize_seleniumメソッド内で
                 from webdriver_manager.chrome import ChromeDriverManager
                 from webdriver_manager.core.utils import ChromeType
                 from selenium.webdriver.chrome.service import Service
-                
-                # Chromiumドライバーを使用
-                service = Service("/usr/bin/chromedriver")
+
+                # Chromiumのバージョンを指定
+                service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120.0.6099").install())
                 self.driver = webdriver.Chrome(service=service, options=chrome_options)
+
                 print("Streamlit Cloud環境でChromiumドライバーを使用")
             else:
                 # 通常環境
