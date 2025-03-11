@@ -38,6 +38,14 @@ class RakutenJSItemDetails:
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         
+        # Streamlit Cloud環境用の設定
+        is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
+        
+        if is_streamlit_cloud:
+            # Streamlit Cloud環境ではChromiumのパスを明示的に指定
+            chrome_options.binary_location = "/usr/bin/chromium-browser"
+        
+        
         try:
             # ChromeDriverManagerを使用して適切なバージョンを自動的に取得
             #from webdriver_manager.chrome import ChromeDriverManager
