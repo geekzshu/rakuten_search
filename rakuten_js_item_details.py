@@ -10,6 +10,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from rakuten_init import RakutenInit
 import traceback
 import os
 import platform
@@ -26,99 +27,6 @@ class RakutenJSItemDetails:
         self.base_url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
         self.driver = None
         
-    def initialize_selenium(self, headless=True):
-        """
-        Seleniumドライバーの初期化
-        
-        Args:
-            headless (bool): ヘッドレスモードで実行するかどうか
-        """
-        chrome_options = Options()
-        if headless:
-            chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        
-        # Streamlit Cloud環境用の設定
-        is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
-        
-        if is_streamlit_cloud:
-            # Streamlit Cloud環境ではChromiumのパスを明示的に指定
-            chrome_options.binary_location = "/usr/bin/chromium-browser"
-            
-            # 環境変数も設定
-            os.environ['CHROME_PATH'] = '/usr/bin/chromium-browser'
-            os.environ['CHROMEDRIVER_PATH'] = '/usr/bin/chromedriver'
-        
-        try:
-            # 各ファイルのinitialize_seleniumメソッド内で
-            from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.utils import ChromeType
-            from selenium.webdriver.chrome.service import Service
-
-            # Chromiumのバージョンを指定
-            service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM, version="120").install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-
-        except ImportError:
-            # 新しいバージョンでは別の場所にある
-            from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.os_manager import ChromeType
-            from selenium.webdriver.chrome.service import Service
-
-            #google chromeに変更
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-
-        except Exception as e:
-            print(f"ChromeDriverManagerでのインストールに失敗: {e}")
-            try:
-                # 代替方法: 直接バイナリパスを指定
-                from selenium.webdriver.chrome.service import Service
-                
- 
-                # OSとアーキテクチャを検出
-                os_name = platform.system()
-                machine = platform.machine()
-
-                print(f"検出されたOS: {os_name}, アーキテクチャ: {machine}")
-
-                if os_name == 'Darwin':  # Mac OS
-                    if machine.startswith('arm'):  # Apple Silicon (M1/M2)
-                        driver_path = "./chromedriver_mac_arm64"
-                    else:  # Intel Mac
-                        driver_path = "./chromedriver_m"
-                elif os_name == 'Linux':
-                    driver_path = "./chromedriver_li"
-                elif os_name == 'Windows':
-                    driver_path = "./chromedriver.exe"
-                else:
-                    driver_path = "./chromedriver"  # デフォルト
-                # ファイルが存在するか確認
-                if os.path.exists(driver_path):
-                    # 実行権限を付与（Windowsでは効果なし）
-                    if os_name != 'Windows':
-                        os.chmod(driver_path, 0o755)
-                    
-                    service = Service(driver_path)
-                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                    print(f"ローカルのChromeDriverを使用: {driver_path}")
-                #else:
-                    #print(f"指定されたChromeDriver {driver_path} が見つかりません。代替方法を試します。")
-                    ## 代替方法（ChromeDriverManagerなど）
-                    #break
-                else:
-                    # どのパスも見つからない場合は、ChromeDriverを自動ダウンロード
-                    from webdriver_manager.chrome import ChromeDriverManager
-                    from webdriver_manager.core.utils import ChromeType
-                    
-                    # 最新の安定版を取得
-                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-                    self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                    
-            except Exception as inner_e:
-                print(f"代替方法でのChromeDriver初期化に失敗: {inner_e}")
-                raise Exception(f"ChromeDriverの初期化に失敗しました。エラー: {e}, {inner_e}")
     
     def extract_js_data_from_url(self, url):
         """
@@ -131,7 +39,9 @@ class RakutenJSItemDetails:
             dict: 抽出したJSデータ
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
             
         try:
             print(f"ページにアクセス中: {url}")
@@ -268,7 +178,9 @@ class RakutenJSItemDetails:
             dict: 追加情報（レビュー数、評価、Q&A数など）
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
             
         self.driver.get(item_url)
         time.sleep(3)  # ページ読み込み待機時間
@@ -666,7 +578,9 @@ class RakutenJSItemDetails:
             dict: 商品情報
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
         
         try:
             self.driver.get(url)
@@ -729,7 +643,9 @@ class RakutenJSItemDetails:
             dict: 商品情報
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
         
         try:
             print(f"商品ページにアクセス中: {url}")

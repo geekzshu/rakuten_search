@@ -372,7 +372,7 @@ if page == "競合分析":
         # 入力フォーム
         with st.form("url_search_form"):
             url_input = st.text_area("楽天商品ページのURLを入力してください（複数のURLは改行で区切ってください）", 
-                                    height=100, 
+                                    height=150, 
                                     placeholder="例: https://item.rakuten.co.jp/shop/item-code/")
             
             submit_button = st.form_submit_button("検索開始")

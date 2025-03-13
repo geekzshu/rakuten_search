@@ -133,7 +133,7 @@ class RakutenCompetitorAnalysis:
                 "div.item-description",
                 "div.itemDescription",
                 "div#item-description",
-                "div.item-exp"
+                "span.item_desc"
             ]
             
             for selector in description_selectors:
