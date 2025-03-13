@@ -9,6 +9,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from rakuten_init import RakutenInit
 import re
 import os
 import matplotlib.pyplot as plt
@@ -41,56 +42,6 @@ class RakutenCompetitorAnalysis:
         self.base_url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20170706"
         self.driver = None
         
-    def initialize_selenium(self, headless=True):
-        """
-        Seleniumドライバーの初期化
-        
-        Args:
-            headless (bool): ヘッドレスモードで実行するかどうか
-        """
-        chrome_options = Options()
-        if headless:
-            chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        
-        # Streamlit Cloud環境用の設定
-        is_streamlit_cloud = os.environ.get('STREAMLIT_SHARING', '') or os.environ.get('STREAMLIT_CLOUD', '')
-        
-        if is_streamlit_cloud:
-            # Streamlit Cloud環境ではChromiumのパスを明示的に指定
-            chrome_options.binary_location = "/usr/bin/chromium-browser"
-            
-            # 環境変数も設定
-            os.environ['CHROME_PATH'] = '/usr/bin/chromium-browser'
-            os.environ['CHROMEDRIVER_PATH'] = '/usr/bin/chromedriver'
-        
-        try:
-            # 最新のwebdriver-managerでは、versionパラメータが削除されている
-            from webdriver_manager.chrome import ChromeDriverManager
-            
-            try:
-                # ChromeTypeを使用する方法を試す
-                try:
-                    from webdriver_manager.core.utils import ChromeType
-                    service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-                except ImportError:
-                    try:
-                        from webdriver_manager.core.os_manager import ChromeType
-                        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
-                    except ImportError:
-                        # ChromeTypeが見つからない場合は、chrome_typeなしで実行
-                        service = Service(ChromeDriverManager().install())
-            except Exception as e:
-                print(f"ChromeTypeでのインストールに失敗: {e}")
-                # バージョン指定なしで最新を取得
-                service = Service(ChromeDriverManager().install())
-            
-            self.driver = webdriver.Chrome(service=service, options=chrome_options)
-            
-        except Exception as e:
-            print(f"ChromeDriverManagerでのインストールに失敗: {e}")
-            # 代替方法を試す...
         
     def search_similar_items(self, keyword, hits=30, page=1, sort="-reviewAverage"):
         """
@@ -128,7 +79,9 @@ class RakutenCompetitorAnalysis:
             dict: 追加情報（レビュー数、評価、Q&A数など）
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
             
         self.driver.get(item_url)
         time.sleep(3)  # ページ読み込み待機時間を増やす
@@ -338,7 +291,9 @@ class RakutenCompetitorAnalysis:
             dict: レビュー情報（件数、レビューテキスト一覧）
         """
         if self.driver is None:
-            self.initialize_selenium()
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium()
+            self.driver = rakuten_init.driver
         
         try:
             print(f"商品ページにアクセス: {item_url}")
@@ -549,7 +504,9 @@ class RakutenCompetitorAnalysis:
         
         # Seleniumの初期化
         if self.driver is None:
-            self.initialize_selenium(headless=headless)
+            rakuten_init = RakutenInit(self.application_id)
+            rakuten_init.initialize_selenium(headless=headless)
+            self.driver = rakuten_init.driver
         
         # 各商品の詳細情報を取得
         for i, item_data in enumerate(items):
