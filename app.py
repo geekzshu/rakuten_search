@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from rakuten_competitor_analysis import RakutenCompetitorAnalysis
 from rakuten_item_details import RakutenItemDetails
 from rakuten_js_item_details import RakutenJSItemDetails
+from rakuten_item_info import RakutenItemInfo
 import base64
 from datetime import datetime
 import traceback
@@ -89,8 +90,8 @@ with st.sidebar:
     st.subheader("ツール選択")
     tool = st.radio(
         "使用するツールを選択してください",
-        ["キーワード検索 (競合分析)"]
-        #["キーワード検索 (競合分析)", "URL検索 (商品詳細)"]
+        #["キーワード検索 (競合分析)"]
+        ["キーワード検索 (競合分析)", "URL検索 (商品詳細)"]
         #["キーワード検索 (競合分析)", "URL検索 (商品詳細)", "商品コード検索"]
     )
     
@@ -413,14 +414,14 @@ if page == "競合分析":
                         
                         try:
                             # 商品情報取得ツールの初期化
-                            js_item_details = RakutenJSItemDetails(st.session_state.api_key)
-                            
+                            #js_item_details = RakutenJSItemDetails(st.session_state.api_key)
+                            item_info = RakutenItemInfo(st.session_state.api_key)
                             # URLから商品情報を取得
-                            results = js_item_details.process_urls(urls, update_progress)
-                            
+                            #results = js_item_details.process_urls(urls, update_progress)
+                            results = item_info.process_urls(urls, update_progress)
                             # リソースの解放
-                            js_item_details.close()
-                            
+                            #js_item_details.close()
+                            item_info.close()
                             if not results.empty:
                                 # 結果の表示
                                 st.success(f"{len(results)}件の商品情報を取得しました")
